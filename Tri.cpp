@@ -1,17 +1,17 @@
-#include "Triangle.h"
+#include "Tri.h"
 
-Triangle::Triangle(Vector3 v1, Vector3 v2, Vector3 v3, Material mat): Hittable(mat)
+Tri::Tri(Vector3 v1, Vector3 v2, Vector3 v3, Material mat): Hittable(mat)
 {
     this->v1 = v1;
     this->v2 = v2;
     this->v3 = v3;
 }
 
-Triangle::~Triangle()
+Tri::~Tri()
 {
 }
 
-bool Triangle::Hit(const MyRay& ray, float tMin, float tMax, HitRecord& record)
+bool Tri::Hit(const MyRay& ray, float tMin, float tMax, HitRecord& record)
 {
 
 	float t = ComputeIntersection(ray, record.t);
@@ -27,7 +27,7 @@ bool Triangle::Hit(const MyRay& ray, float tMin, float tMax, HitRecord& record)
 	return false;
 }
 
-float Triangle::ComputeIntersection(const MyRay& ray, float& t)
+float Tri::ComputeIntersection(const MyRay& ray, float& t)
 {
 
 	auto tempRay = ray;

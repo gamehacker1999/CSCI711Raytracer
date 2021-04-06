@@ -162,7 +162,7 @@ inline Vector3 CookTorrence(Vector3 n, float roughness, Vector3 v, Vector3 &f0, 
 
 	Vector3 numSpec = D * F * G;
 	float denomSpec = 4.0f * (std::max)(n.Dot(v), 0.0f) * (std::max)(n.Dot(l), 0.0f);
-	Vector3 specular = numSpec / max(denomSpec, 0.0001f); //just in case denominator is zero
+	Vector3 specular = numSpec / std::max(denomSpec, 0.0001f); //just in case denominator is zero
 
 	return specular;
 

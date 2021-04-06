@@ -1,10 +1,11 @@
 #pragma once
 #include "Hittable.h"
-class Triangle :
+class Tri :
     public Hittable
 {
-	Triangle(Vector3 v1, Vector3 v2, Vector3 v3, Material mat);
-	~Triangle();
+public:
+	Tri(Vector3 v1, Vector3 v2, Vector3 v3, Material mat);
+	~Tri();
 
 	bool Hit(const MyRay& ray, float tMin, float tMax, HitRecord& record) override;
 	float ComputeIntersection(const MyRay& ray, float& t);

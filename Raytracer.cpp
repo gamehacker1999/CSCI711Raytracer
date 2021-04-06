@@ -5,6 +5,7 @@
 #include"Sphere.h"
 #include "HitRectangle.h"
 #include"Torus.h"
+#include"Tri.h"
 #include"HittableManager.h"
 #include<thread>
 #include<future>
@@ -35,7 +36,7 @@ Color RayColor(const MyRay& r, HittableManager& world, int depth = 0)
         {
 
 
-            if (rec.material.kr > 0)
+            if (true)
             {
                 Color sumColor = Color(0, 0, 0, 1);
                 Vector3 perfectReflection = Vector3::Reflect(r.GetDirection(), rec.normal);
@@ -54,13 +55,13 @@ Color RayColor(const MyRay& r, HittableManager& world, int depth = 0)
 
                         Vector3 rayDir = CalculateDiffuseDirection(u1, u2, rec.normal);
 
-                        MyRay ray = MyRay(rec.point+0.1*rayDir, rayDir);
+                        MyRay ray = MyRay(rec.point+0.1*rec.normal, rayDir);
 
                         float ndotl = rec.normal.Dot(rayDir);
 
                         Color reflectedColor = RayColor(ray, world, depth + 1)*ndotl;
                         
-                        sumColor += rec.material.kr * reflectedColor;
+                        sumColor += rec.material.diffuseColor*reflectedColor;
                     }
 
                     else if (rec.material.diffuseCeoff < random && random < (rec.material.diffuseCeoff + rec.material.specCoeff))
@@ -72,14 +73,14 @@ Color RayColor(const MyRay& r, HittableManager& world, int depth = 0)
 
                         rayDir.Normalize();
 
-                        MyRay ray = MyRay(rec.point + 0.1 * rayDir, rayDir);
+                        MyRay ray = MyRay(rec.point + 0.1 * rec.normal, rayDir);
 
                         float ndotl = rec.normal.Dot(rayDir);
 
                         weight += ndotl;
                         Color reflectedColor = RayColor(ray, world, depth + 1) * ndotl;
 
-                        sumColor += rec.material.kr * reflectedColor;
+                        sumColor += rec.material.specColor*reflectedColor;
                     }
 
 
@@ -87,29 +88,29 @@ Color RayColor(const MyRay& r, HittableManager& world, int depth = 0)
 
                 sumColor = Color(sumColor.R() / NUM_SAMPLES, sumColor.G() / NUM_SAMPLES, sumColor.B() / NUM_SAMPLES, 1.0f);
 
-                //color += sumColor.ToVector3();
+                color += sumColor.ToVector3();
 
-                Vector3 reflectedVector = Vector3::Reflect(r.GetDirection(), rec.normal);
-                
-                MyRay reflectedRay;
-                reflectedRay = MyRay(rec.point + 0.1 * reflectedVector, reflectedVector);
-                
-                rec.depth++;
-                
-                Color reflectedColor = RayColor(reflectedRay, world, depth + 1);
-                
-                color += rec.material.kr * reflectedColor.ToVector3();
+                //Vector3 reflectedVector = Vector3::Reflect(r.GetDirection(), rec.normal);
+                //
+                //MyRay reflectedRay;
+                //reflectedRay = MyRay(rec.point + 0.1 * reflectedVector, reflectedVector);
+                //
+                //rec.depth++;
+                //
+                //Color reflectedColor = RayColor(reflectedRay, world, depth + 1);
+                //
+                //color += rec.material.kr * reflectedColor.ToVector3();
             }
         }
 
-        Color finalToneReproducedCol = Color(color);
-        return finalToneReproducedCol;
+        Color finalCol = Color(color);
+        return finalCol;
 
     }
     Vector3 direction = r.GetDirection();
     auto t = 0.5 * (direction.y + 1.0);
 
-    Vector3 skyboxColor = Vector3(0.5, 0.7, 1.0)*7;
+    Vector3 skyboxColor = Vector3(0.5, 0.7, 1.0);
 
     return Color(skyboxColor);
 }
@@ -141,8 +142,8 @@ int main()
         return EXIT_FAILURE;
     }
 
-    Material mat1 = { Color(0, 1, 0, 1) , Color(1,1,1,1), 0.1, 0.9, 64, 0.8, 0.2, 0,0};
-    Material mat2 = { Color(1, 1, 1, 1) , Color(1,1,1,1), 0.3, 0.7f, 128, 0.2, 0.8, 1.0f,0 };
+    Material mat1 = { Color(0, 1, 0, 1) , Color(1,1,1,1), 1.f, 0.f, 64, 0.8, 0.2, 0,0};
+    Material mat2 = { Color(1, 1, 1, 1) , Color(1,1,1,1), 0.0, 1.0f, 128, 0.2, 0.8, 1.0f,0 };
     Material mat3 = { Color(1, 1, 0, 1) , Color(1,1,1,1), 0.8, 0.2, 128, 0.5, 0.01,0,0 };
 
     HittableManager world;
@@ -152,9 +153,18 @@ int main()
     world.AddHittable(sphere2);
     auto rect1 = std::make_shared<HitRectangle>(Vector3(4, 0, 2.4), Vector3(0, 1, 0), Vector3(10, 10, 15.8), mat3);
     world.AddHittable(rect1);
-    auto torus = std::make_shared<Torus>(1, 0.5, Vector3(5, 1, 0.5), mat3);
+    //auto torus = std::make_shared<Torus>(1, 0.5, Vector3(5, 1, 0.5), mat3);
     //world.AddHittable(torus);
 
+    //loading the bunny
+    //{
+    //    happly::PLYData plyIn("Models/bunny.ply");
+    //    std::vector<std::array<double, 3>> vPos = plyIn.getVertexPositions();
+    //    std::vector<std::vector<size_t>> fInd = plyIn.getFaceIndices<size_t>();
+    //
+    //
+    //}
+    //
     PointLight pLight1 = {};
     pLight1.position = Vector3(0.8f, 3.28, -4.21);
     pLight1.intensity = 15;

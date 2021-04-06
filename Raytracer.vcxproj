@@ -151,7 +151,7 @@
     <ClCompile Include="HitRectangle.cpp" />
     <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="Torus.cpp" />
-    <ClCompile Include="Triangle.cpp" />
+    <ClCompile Include="Tri.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -166,7 +166,7 @@
     <ClInclude Include="HitRectangle.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="Torus.h" />
-    <ClInclude Include="Triangle.h" />
+    <ClInclude Include="Tri.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
