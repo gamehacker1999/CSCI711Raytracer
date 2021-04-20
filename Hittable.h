@@ -13,6 +13,7 @@ struct HitRecord
 	Vector3 normal; //surface normal
 	Material material;
 	int depth;
+	float ior;
 };
 
 //class that defines an object that can be hit by a ray

@@ -12,4 +12,5 @@ struct Material
 	float roughness;
 	float kr; //reflectivity
 	float kt; //transmittability
+	float ior; //index of refraction
 };

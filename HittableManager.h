@@ -11,7 +11,7 @@ public:
 	~HittableManager();
 
 	bool ManageHits(const MyRay& ray, float tMin, float tMax, HitRecord& record, Vector3& color);
-	int ShootShadowRays(Vector3 point, PointLight& light);
+	float ShootShadowRays(Vector3 point, PointLight& light);
 
 	void AddHittable(std::shared_ptr<Hittable> hittable);
 	void AddPointLight(PointLight& light);

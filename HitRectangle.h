@@ -1,5 +1,7 @@
 #pragma once
 #include "Hittable.h"
+
+
 class HitRectangle :
     public Hittable
 {

@@ -11,16 +11,71 @@
 #include<future>
 #include<atomic>
 
-#define MAX_DEPTH 2
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+#define MAX_DEPTH 8
 #define NUM_SAMPLES 1.f
 
-Color ToneReproduction(Vector3 hdrColor)
+Color ToneReproductionReinhardt(Vector3 hdrColor, float keyValue, float a = 0.18)
 {
+
+    float rs = (a / keyValue) * hdrColor.x;
+    float gs = (a / keyValue) * hdrColor.y;
+    float bs = (a / keyValue) * hdrColor.z;
+
+    Vector3 newCol = Vector3(rs, gs, bs);
+
     // reinhard tone mapping
-    Vector3 mapped = hdrColor / (hdrColor + Vector3(1.0, 1.0f, 1.0f));
+    Vector3 mapped = newCol / (newCol + Vector3(1.0, 1.0f, 1.0f));
     Color col = Color(mapped.x, mapped.y, mapped.z, 1.0);
 
     return col;
+}
+
+Color ToneReproductionWard(Vector3 hdrColor, float keyValue, float ldMax)
+{
+    
+    float num = (1.219f + std::pow(ldMax / 2.f, 0.4));
+    float denom = (1.219 + std::pow(keyValue, 0.4));
+
+    float sf = num / denom;
+
+    sf = std::pow(sf, 2.5f);
+
+    Vector3 mapped = (hdrColor * sf)/ldMax;
+
+    Color col = Color(mapped.x, mapped.y, mapped.z, 1.0);
+
+    return col;
+}
+
+Color ToneReproductionAdaptiveLogarithmic(Vector3 hdrColor, float bias, 
+    float maxLuma, float curLuma, float ldMax)
+{
+
+    float term1Num = (ldMax * 0.01);
+    float term1Denom = std::log10(maxLuma + 1);
+
+    float term1 = term1Num / term1Denom;
+
+    float term2Num = std::log(curLuma + 1);
+    float term2Denom = std::log(2 + (std::pow(curLuma / maxLuma, (std::log(bias) / std::log(0.5))))*0.8);
+
+    float term2 = term2Num / term2Denom;
+
+    float ld = term1 * term2;
+
+    Vector3 mapped = (hdrColor * ld) / ldMax;
+
+    Color col = Color(mapped.x, mapped.y, mapped.z, 1.0);
+
+    return col;
+}
+
+float CalcLuminance(Color color)
+{
+    return (color.R() * 0.27f + color.G() * 0.67 + 0.06 * color.B());
 }
 
 Color RayColor(const MyRay& r, HittableManager& world, int depth = 0)
@@ -36,70 +91,98 @@ Color RayColor(const MyRay& r, HittableManager& world, int depth = 0)
         {
 
 
-            if (true)
+            if (rec.material.kr>0)
             {
-                Color sumColor = Color(0, 0, 0, 1);
-                Vector3 perfectReflection = Vector3::Reflect(r.GetDirection(), rec.normal);
-                perfectReflection.Normalize();
-                for (size_t i = 0; i < NUM_SAMPLES; i++)
+                //Color sumColor = Color(0, 0, 0, 1);
+                //Vector3 perfectReflection = Vector3::Reflect(r.GetDirection(), rec.normal);
+                //perfectReflection.Normalize();
+                //for (size_t i = 0; i < NUM_SAMPLES; i++)
+                //{
+                //    auto random = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+                //
+                //    float weight = 0.f;
+                //
+                //    if (random < rec.material.diffuseCeoff)
+                //    {
+                //        //diffuse
+                //        auto u1 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+                //        auto u2 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+                //
+                //        Vector3 rayDir = CalculateDiffuseDirection(u1, u2, rec.normal);
+                //
+                //        MyRay ray = MyRay(rec.point+0.1*rec.normal, rayDir);
+                //
+                //        float ndotl = rec.normal.Dot(rayDir);
+                //
+                //        Color reflectedColor = RayColor(ray, world, depth + 1)*ndotl;
+                //        
+                //        sumColor += rec.material.diffuseColor*reflectedColor;
+                //    }
+                //
+                //    else if (rec.material.diffuseCeoff < random && random < (rec.material.diffuseCeoff + rec.material.specCoeff))
+                //    {
+                //        auto u1 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+                //        auto u2 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+                //
+                //        Vector3 rayDir = CalculateSpecularDirection(u1, u2, perfectReflection,rec.material.specularity);
+                //
+                //        rayDir.Normalize();
+                //
+                //        MyRay ray = MyRay(rec.point + 0.1 * rec.normal, rayDir);
+                //
+                //        float ndotl = rec.normal.Dot(rayDir);
+                //
+                //        weight += ndotl;
+                //        Color reflectedColor = RayColor(ray, world, depth + 1) * ndotl;
+                //
+                //        sumColor += rec.material.specColor*reflectedColor;
+                //    }
+                //
+                //
+                //}
+                //
+                //sumColor = Color(sumColor.R() / NUM_SAMPLES, sumColor.G() / NUM_SAMPLES, sumColor.B() / NUM_SAMPLES, 1.0f);
+                //
+                //color += sumColor.ToVector3();
+
+                Vector3 reflectedVector = Vector3::Reflect(r.GetDirection(), rec.normal);
+                
+                MyRay reflectedRay;
+                reflectedRay = MyRay(rec.point + 0.1 * reflectedVector, reflectedVector);
+                
+                rec.depth++;
+                
+                Color reflectedColor = RayColor(reflectedRay, world, depth + 1);
+                
+
+                color += rec.material.kr * reflectedColor.ToVector3();
+            }
+
+            if (rec.material.kt > 0)
+            {
+                Vector3 normal = rec.normal;
+                float refractionIndex = 1.0f / rec.material.ior;
+                if (rec.normal.Dot(-r.GetDirection()) < 0)
                 {
-                    auto random = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-
-                    float weight = 0.f;
-
-                    if (random < rec.material.diffuseCeoff)
-                    {
-                        //diffuse
-                        auto u1 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-                        auto u2 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-
-                        Vector3 rayDir = CalculateDiffuseDirection(u1, u2, rec.normal);
-
-                        MyRay ray = MyRay(rec.point+0.1*rec.normal, rayDir);
-
-                        float ndotl = rec.normal.Dot(rayDir);
-
-                        Color reflectedColor = RayColor(ray, world, depth + 1)*ndotl;
-                        
-                        sumColor += rec.material.diffuseColor*reflectedColor;
-                    }
-
-                    else if (rec.material.diffuseCeoff < random && random < (rec.material.diffuseCeoff + rec.material.specCoeff))
-                    {
-                        auto u1 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-                        auto u2 = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-
-                        Vector3 rayDir = CalculateSpecularDirection(u1, u2, perfectReflection,rec.material.specularity);
-
-                        rayDir.Normalize();
-
-                        MyRay ray = MyRay(rec.point + 0.1 * rec.normal, rayDir);
-
-                        float ndotl = rec.normal.Dot(rayDir);
-
-                        weight += ndotl;
-                        Color reflectedColor = RayColor(ray, world, depth + 1) * ndotl;
-
-                        sumColor += rec.material.specColor*reflectedColor;
-                    }
-
+                    normal *= -1;
+                    refractionIndex = rec.material.ior / 1.0f;
 
                 }
+                Vector3 refractedVector = Vector3::Refract(r.GetDirection(), normal, refractionIndex);
 
-                sumColor = Color(sumColor.R() / NUM_SAMPLES, sumColor.G() / NUM_SAMPLES, sumColor.B() / NUM_SAMPLES, 1.0f);
+                if (refractedVector.x == 0 && refractedVector.y == 0 && refractedVector.z == 0)
+                {
+                    //total internal reflection
+                    refractedVector = Vector3::Reflect(r.GetDirection(), normal);
+                }
 
-                color += sumColor.ToVector3();
+                MyRay refractedRay;
+                refractedRay = MyRay(rec.point + 0.1 * refractedVector, refractedVector);
 
-                //Vector3 reflectedVector = Vector3::Reflect(r.GetDirection(), rec.normal);
-                //
-                //MyRay reflectedRay;
-                //reflectedRay = MyRay(rec.point + 0.1 * reflectedVector, reflectedVector);
-                //
-                //rec.depth++;
-                //
-                //Color reflectedColor = RayColor(reflectedRay, world, depth + 1);
-                //
-                //color += rec.material.kr * reflectedColor.ToVector3();
+                Color refractedColor = RayColor(refractedRay, world, depth + 1);
+
+                color += rec.material.kt * refractedColor.ToVector3();
+
             }
         }
 
@@ -110,7 +193,7 @@ Color RayColor(const MyRay& r, HittableManager& world, int depth = 0)
     Vector3 direction = r.GetDirection();
     auto t = 0.5 * (direction.y + 1.0);
 
-    Vector3 skyboxColor = Vector3(0.5, 0.7, 1.0);
+    Vector3 skyboxColor = Vector3(0.5, 0.7, 1.0)*7;
 
     return Color(skyboxColor);
 }
@@ -142,8 +225,8 @@ int main()
         return EXIT_FAILURE;
     }
 
-    Material mat1 = { Color(0, 1, 0, 1) , Color(1,1,1,1), 1.f, 0.f, 64, 0.8, 0.2, 0,0};
-    Material mat2 = { Color(1, 1, 1, 1) , Color(1,1,1,1), 0.0, 1.0f, 128, 0.2, 0.8, 1.0f,0 };
+    Material mat1 = { Color(1, 1, 1, 1) , Color(1,1,1,1), 0.1f, 0.9f, 64, 0.8, 0.2, 0, 0.80, 0.98};
+    Material mat2 = { Color(1, 1, 1, 1) , Color(1,1,1,1), 0.3, 0.7f, 128, 0.2, 0.8, 1.0f,0 };
     Material mat3 = { Color(1, 1, 0, 1) , Color(1,1,1,1), 0.8, 0.2, 128, 0.5, 0.01,0,0 };
 
     HittableManager world;
@@ -167,7 +250,7 @@ int main()
     //
     PointLight pLight1 = {};
     pLight1.position = Vector3(0.8f, 3.28, -4.21);
-    pLight1.intensity = 15;
+    pLight1.intensity = 20;
     pLight1.color = Vector3(1, 1, 1);
 
     PointLight pLight2 = {};
@@ -193,9 +276,13 @@ int main()
 
     srand(time(NULL));
 
-    for (int j = image_height - 1; j >= 0; --j) {
+
+    int count = 0;
+    for (int j = image_height - 1; j >= 0; --j) 
+    {
         std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
-        for (int i = 0; i < image_width; ++i) {
+        for (int i = 0; i < image_width; ++i) 
+        {
             auto u = double(i) / (image_width - 1);
             auto v = double(j) / (image_height - 1);
     
@@ -212,18 +299,80 @@ int main()
     
             }
     
-            Color pixel_color = Color(col.R() / float(numberOfSamples), col.G() / float(numberOfSamples), col.B() / float(numberOfSamples), 1.0f);
+            Color pixel_color = Color(col.R() / float(numberOfSamples), col.G() / float(numberOfSamples), col.B() 
+                / float(numberOfSamples), 1.0f);
+
+
+            data[count++] = pixel_color.R();
+            data[count++] = pixel_color.G();
+            data[count++] = pixel_color.B();
     
-            pixel_color = ToneReproduction(pixel_color.ToVector3());
-    
-            data[i * (j + image_width)] = pixel_color.R() * 255.99;
-            data[i * (j + image_width)+1] = pixel_color.G() * 255.99;
-            data[i * (j + image_width)+2] = pixel_color.B() * 255.99;
-    
-            oFile << std::to_string(pixel_color.R()*255.99) + " " + 
-                std::to_string(pixel_color.G() * 255.99) + " " + std::to_string(pixel_color.B() * 255.99) + "\n";
+            //pixel_color = ToneReproductionReinhardt(pixel_color.ToVector3());
+            //
+            //oFile << std::to_string(pixel_color.R()*255.99) + " " + 
+            //    std::to_string(pixel_color.G() * 255.99) + " " + std::to_string(pixel_color.B() * 255.99) + "\n";
         }
     }
+
+    count = 0;
+    float keyValue = 0;
+    float logKeyValue = 0;
+    //auto bytesPerLine = image_width * 3;
+    for (int j = image_height - 1; j >= 0; --j)
+    {
+        for (int i = 0; i < image_width; ++i)
+        {
+            auto pixelColor = Color(data[count + 0], data[count + 1], data[count + 2], 1.0f);
+            count += 3;
+            logKeyValue += std::log(0.001 + CalcLuminance(pixelColor));
+        }
+    }
+
+    logKeyValue /= (float(image_height) * float(image_width));
+    keyValue = std::exp(logKeyValue);
+
+    float maxLuma = FLT_MIN;
+
+
+    count = 0;
+    //auto bytesPerLine = image_width * 3;
+    for (int j = image_height - 1; j >= 0; --j)
+    {
+        for (int i = 0; i < image_width; ++i)
+        {
+            auto pixelColor = Color(data[count + 0], data[count + 1], data[count + 2], 1.0f);
+
+            auto curluma = CalcLuminance(pixelColor);
+
+            if (maxLuma < curluma)
+            {
+                maxLuma = curluma;
+            }
+        }
+    }
+
+    count = 0;
+    //auto bytesPerLine = image_width * 3;
+    for (int j = image_height - 1; j >= 0; --j) 
+    {
+        for (int i = 0; i < image_width; ++i) 
+        {
+            auto pixelColor = Color(data[count+0], data[count+1], data[count+2], 1.0f);
+            count += 3;
+            //pixelColor = ToneReproductionReinhardt(pixelColor.ToVector3(), keyValue);
+
+            //pixelColor = ToneReproductionWard(pixelColor.ToVector3(), keyValue, 400);
+
+            pixelColor = ToneReproductionAdaptiveLogarithmic(pixelColor.ToVector3(),
+                0.85,maxLuma,CalcLuminance(pixelColor), 400);
+
+    
+            oFile << std::to_string(pixelColor.R() * 255.99) + " " +
+                std::to_string(pixelColor.G() * 255.99) + " " + std::to_string(pixelColor.B() * 255.99) + "\n";
+        }
+    }
+
+    //stbi_write_png("output.png", image_width, image_height, 4, data, image_width*4);
 
     delete[] data;
 

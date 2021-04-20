@@ -54,13 +54,13 @@ bool HittableManager::ManageHits(const MyRay& ray, float tMin, float tMax, HitRe
 
 		for (size_t i = 0; i < pointLights.size(); i++)
 		{
-			int shadowFactor = ShootShadowRays(record.point, pointLights[i]);
+			float shadowFactor = ShootShadowRays(record.point, pointLights[i]);
 
-			if (shadowFactor != 0)
+			if (shadowFactor!=0)
 			{
 				auto col1 = (pointLights[i].color * pointLights[i].intensity) * Lambertian(pointLights[i], record);
-				diffuseColor += col1;
-				specularColor += (pointLights[i].color * pointLights[i].intensity) * PhongLighting(pointLights[i], record, ray);
+				diffuseColor += col1*shadowFactor;
+				specularColor += (pointLights[i].color * pointLights[i].intensity) * PhongLighting(pointLights[i], record, ray)*shadowFactor;
 			}
 		}
 
@@ -72,7 +72,7 @@ bool HittableManager::ManageHits(const MyRay& ray, float tMin, float tMax, HitRe
 	return hit;
 }
 
-int HittableManager::ShootShadowRays(Vector3 point, PointLight& light)
+float HittableManager::ShootShadowRays(Vector3 point, PointLight& light)
 {
 	Vector3 shadowRayDir = light.position - point;
 	shadowRayDir.Normalize(shadowRayDir);
@@ -82,7 +82,7 @@ int HittableManager::ShootShadowRays(Vector3 point, PointLight& light)
 	bool hit = false;
 	for (int i = 0; i < count; i++)
 	{
-		temp = {};
+		//temp = {};
 		if (hittableList[i]->Hit(shadowRay, 0.0001, 100000, temp))
 		{
 			hit = true;
@@ -90,7 +90,21 @@ int HittableManager::ShootShadowRays(Vector3 point, PointLight& light)
 		}
 	}
 
-	int shadowFactor = hit == true ? 0 : 1;
+	float shadowFactor = 1.f;
+
+	if (hit)
+	{
+		shadowFactor = 0;
+
+		if (temp.material.kt > 0)
+		{
+			shadowFactor += (temp.material.kt);
+		}
+	}
+	else
+	{
+		shadowFactor == 1;
+	}
 
 	return shadowFactor;
 
